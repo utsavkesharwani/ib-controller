@@ -230,13 +230,17 @@ public class IBController {
         startIBControllerServer();
 
         startShutdownTimerIfRequired();
+        restartTimerIfRequired();
 
         createToolkitListener();
         
         startSavingTwsSettingsAutomatically();
 
         startTwsOrGateway();
+
+        waitTaskFinish();
     }
+
 
     public IBController() {
         super();
@@ -329,6 +333,17 @@ public class IBController {
         _WindowHandlers.add(new ReloginDialogHandler());
     }
 
+    private static void waitTaskFinish(){
+        try{
+            boolean loop;
+            do {
+                loop = !MyCachedThreadPool.getInstance().awaitTermination(2, TimeUnit.MINUTES);
+            }while (loop);
+        } catch (Exception ex){
+            Utils.logToConsole("error: " + ex.toString());
+        }
+    }
+
     private static String getFIXPasswordFromProperties() {
         String password = Settings.getString("FIXPassword", "");
         if (password.length() != 0) {
@@ -408,6 +423,38 @@ public class IBController {
                 System.exit(1);
             }
             return cal.getTime();
+        }
+    }
+
+    private static Date getRestartTime(){
+        String restartTimeSetting = Settings.getString("RestartAt", "");
+        if (restartTimeSetting.length() == 0){
+            return null;
+        } else {
+            int restartDayOfWeek;
+            int restartHour;
+            int restartMinute;
+            Calendar cal = Calendar.getInstance();
+            try {
+                cal.setTime((new SimpleDateFormat("E HH:mm")).parse(restartTimeSetting));
+                restartDayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+                restartHour = cal.get(Calendar.HOUR_OF_DAY);
+                restartMinute = cal.get(Calendar.MINUTE);
+                cal.setTimeInMillis(System.currentTimeMillis());
+                cal.set(Calendar.HOUR, restartHour);
+                cal.set(Calendar.MINUTE, restartMinute);
+                cal.set(Calendar.SECOND, 0);
+                cal.add(Calendar.DAY_OF_MONTH, (restartDayOfWeek + 7 - cal.get(Calendar.DAY_OF_WEEK)) % 7);
+                if (!cal.getTime().after(new Date())){
+                    cal.add(Calendar.DAY_OF_MONTH, 7);
+                }
+
+            } catch (ParseException e){
+                Utils.logError("Invalid ClosedownAt setting: should be: <day hh:mm>   eg Friday 22:00");
+                System.exit(1);
+            }
+            return cal.getTime();
+
         }
     }
 
@@ -533,6 +580,22 @@ public class IBController {
         }
     }
 
+    private static void restartTimerIfRequired(){
+        Date shutdownTime = getRestartTime();
+        if (!(shutdownTime == null)) {
+            long delay = shutdownTime.getTime() - System.currentTimeMillis();
+            Utils.logToConsole((isGateway() ? "Gateway" : "TWS") + " will be restart at" +
+                        (new SimpleDateFormat("yyyy/MM/dd HH:mm")).format(shutdownTime) + "millsecond: " +
+                        Long.toString(delay));
+            MyScheduledExecutorService.getInstance().schedule(new Runnable() {
+                @Override
+                public void run() {
+                    MyCachedThreadPool.getInstance().execute(new RestartTask());
+                }
+            }, delay, TimeUnit.MILLISECONDS);
+        }
+    }
+
     private static void startTws() {
         if (Settings.getBoolean("ShowAllTrades", false)) {
             MyCachedThreadPool.getInstance().execute(new Runnable () {
@@ -544,12 +607,18 @@ public class IBController {
         jclient.LoginFrame.main(twsArgs);
     }
 
-    private static void startTwsOrGateway() {
+    public static void startTwsOrGateway() {
         int portNumber = Settings.getInt("ForceTwsApiPort", 0);
         if (portNumber != 0) MyCachedThreadPool.getInstance().execute(new ConfigureTwsApiPortTask(portNumber));
 
         if (isGateway()) {
-            startGateway();
+            MyCachedThreadPool.getInstance().execute(new Runnable() {
+                @Override
+                public void run() {
+                    startGateway();
+                }
+            });
+            //startGateway();
         } else {
             startTws();
         }
