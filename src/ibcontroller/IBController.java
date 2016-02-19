@@ -338,10 +338,11 @@ public class IBController {
             boolean loop;
             do {
                 loop = !MyCachedThreadPool.getInstance().awaitTermination(2, TimeUnit.MINUTES);
-            }while (loop);
+            }while (true);
         } catch (Exception ex){
             Utils.logToConsole("error: " + ex.toString());
         }
+        Utils.logToConsole("exit main thread");
     }
 
     private static String getFIXPasswordFromProperties() {
@@ -554,7 +555,7 @@ public class IBController {
         }
     }
     
-    private static void startGateway() {
+    public static void startGateway() {
         String[] twsArgs = new String[1];
         twsArgs[0] = getTWSSettingsDirectory();
         ibgateway.GWClient.main(twsArgs);
@@ -596,7 +597,7 @@ public class IBController {
         }
     }
 
-    private static void startTws() {
+    public static void startTws() {
         if (Settings.getBoolean("ShowAllTrades", false)) {
             MyCachedThreadPool.getInstance().execute(new Runnable () {
                 @Override public void run() {TwsListener.showTradesLogWindow();}
@@ -608,6 +609,7 @@ public class IBController {
     }
 
     public static void startTwsOrGateway() {
+        Utils.logToConsole("startGateway start");
         int portNumber = Settings.getInt("ForceTwsApiPort", 0);
         if (portNumber != 0) MyCachedThreadPool.getInstance().execute(new ConfigureTwsApiPortTask(portNumber));
 
@@ -620,9 +622,17 @@ public class IBController {
             });
             //startGateway();
         } else {
-            startTws();
+            MyCachedThreadPool.getInstance().execute(new Runnable() {
+                @Override
+                public void run() {
+                    startTws();
+                }
+            });
+            //startTws();
         }
+        Utils.logToConsole("startGateway end");
         redirectOutandErrStreams();
+        Utils.logToConsole("startGateway end end");
     }
     
     private static void startSavingTwsSettingsAutomatically() {

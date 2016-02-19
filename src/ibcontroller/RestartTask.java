@@ -11,7 +11,25 @@ public class RestartTask implements Runnable{
     @Override
     public void run() {
         stopMainWindow();
-        IBController.startTwsOrGateway();
+        try{
+            Thread.sleep(30000);
+
+        }catch (Exception e){
+
+        }
+        Utils.logToConsole("start new gateway");
+//        IBController.startTwsOrGateway();
+        MyCachedThreadPool.getInstance().execute(new Runnable() {
+            @Override
+            public void run() {
+                if (IBController.isGateway()){
+                    IBController.startGateway();
+                } else {
+                    IBController.startTws();
+                }
+            }
+        });
+        
     }
 
     private void stopMainWindow(){
