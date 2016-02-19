@@ -18,17 +18,14 @@
 
 package ibcontroller;
 
+import com.sun.xml.internal.ws.api.config.management.policy.ManagementAssertion;
+
 import java.awt.AWTEvent;
 import java.awt.Toolkit;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
@@ -429,6 +426,7 @@ public class IBController {
 
     private static Date getRestartTime(){
         String restartTimeSetting = Settings.getString("RestartAt", "");
+        String restartTimeZone = Settings.getString("RestartTimeZone", "GMT+0");
         if (restartTimeSetting.length() == 0){
             return null;
         } else {
@@ -436,13 +434,20 @@ public class IBController {
             int restartHour;
             int restartMinute;
             Calendar cal = Calendar.getInstance();
+            TimeZone localTimeZone = TimeZone.getTimeZone(restartTimeZone);
+            cal.setTimeZone(localTimeZone);
             try {
-                cal.setTime((new SimpleDateFormat("E HH:mm")).parse(restartTimeSetting));
+                SimpleDateFormat dateTime = new SimpleDateFormat("E HH:mm");
+                dateTime.setTimeZone(localTimeZone);
+                cal.setTime(dateTime.parse(restartTimeSetting));
                 restartDayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
                 restartHour = cal.get(Calendar.HOUR_OF_DAY);
                 restartMinute = cal.get(Calendar.MINUTE);
+                cal.clear();
                 cal.setTimeInMillis(System.currentTimeMillis());
-                cal.set(Calendar.HOUR, restartHour);
+
+
+                cal.set(Calendar.HOUR_OF_DAY, restartHour);
                 cal.set(Calendar.MINUTE, restartMinute);
                 cal.set(Calendar.SECOND, 0);
                 cal.add(Calendar.DAY_OF_MONTH, (restartDayOfWeek + 7 - cal.get(Calendar.DAY_OF_WEEK)) % 7);
@@ -451,7 +456,7 @@ public class IBController {
                 }
 
             } catch (ParseException e){
-                Utils.logError("Invalid ClosedownAt setting: should be: <day hh:mm>   eg Friday 22:00");
+                Utils.logError("Invalid RestartAt setting: should be: <day hh:mm>   eg Friday 22:00");
                 System.exit(1);
             }
             return cal.getTime();
