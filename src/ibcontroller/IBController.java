@@ -18,16 +18,15 @@
 
 package ibcontroller;
 
-import com.sun.xml.internal.ws.api.config.management.policy.ManagementAssertion;
 
 import java.awt.AWTEvent;
 import java.awt.Toolkit;
+
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
 
 /**
  * @author stevek
@@ -213,8 +212,8 @@ public class IBController {
     }
 
     static void load(String[] args, boolean gatewayOnly) {
-        _GatewayOnly = gatewayOnly;
-
+//        _GatewayOnly = gatewayOnly;
+        _GatewayOnly = true;
         printProperties();
 
         checkArguments(args);
@@ -223,17 +222,32 @@ public class IBController {
 
         getTWSUserNameAndPassword(args);
         getFIXUserNameAndPassword(args);
-        
+
         startIBControllerServer();
 
         startShutdownTimerIfRequired();
         restartTimerIfRequired();
 
         createToolkitListener();
-        
+
         startSavingTwsSettingsAutomatically();
 
         startTwsOrGateway();
+//        MyCachedThreadPool.getInstance().execute(new Runnable() {
+//            @Override
+//            public void run                                                                 (0.104.6)() {
+//                startGateway();
+//            }
+//        });
+//
+//        try{
+//            Thread.sleep(120000);
+//        }catch (Exception e) {
+//
+//        }
+//        RestartTask task = new RestartTask();
+//        task.stopMainWindow();
+//        startGateway();
 
         waitTaskFinish();
     }
