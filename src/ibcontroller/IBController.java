@@ -212,8 +212,7 @@ public class IBController {
     }
 
     static void load(String[] args, boolean gatewayOnly) {
-//        _GatewayOnly = gatewayOnly;
-        _GatewayOnly = true;
+        _GatewayOnly = gatewayOnly;
         printProperties();
 
         checkArguments(args);
