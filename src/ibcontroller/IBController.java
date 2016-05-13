@@ -444,7 +444,7 @@ public class IBController {
             } else {
                 return false;
             }
-        } else if (args.length == 3) {
+        } else if (args.length > 2) {
             _IBAPIUserName = args[1];
             _IBAPIPassword = args[2];
             return true;
@@ -507,7 +507,7 @@ public class IBController {
 
     private static void startIBControllerServer(String[] args) {
         int port = 0;
-        if (args.length > 3) {
+        if (args.length > 4) {
             try {
                 port = Integer.parseInt(args[4]);
             } catch (NumberFormatException e) {
@@ -546,9 +546,9 @@ public class IBController {
 
     private static void startTwsOrGateway(String[] args) {
         int apiPort = 0;
-        if (args.length > 4) {
+        if (args.length > 3) {
             try {
-                apiPort = Integer.parseInt(args[5]);
+                apiPort = Integer.parseInt(args[3]);
             } catch (NumberFormatException e) {
                 apiPort = 0;
             }
