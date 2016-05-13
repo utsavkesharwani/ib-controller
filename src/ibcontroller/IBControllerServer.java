@@ -28,9 +28,12 @@ class IBControllerServer
         implements Runnable {
 
     private ServerSocket mSocket = null;
+    private int port = 0;
     private volatile boolean mQuitting = false;
 
-    IBControllerServer() {}
+    IBControllerServer(int port) {
+        this.port = port;
+    }
 
     @Override public void run() {
         Thread.currentThread().setName("IBControllerServer");
@@ -59,23 +62,25 @@ class IBControllerServer
     }
 
     private boolean createSocket() {
-        int port = Settings.getInt("IbControllerPort", 7462);
+        if (this.port == 0) {
+            this.port = Settings.getInt("IbControllerPort", 7462);
+        }
         int backlog = 5;
         String bindaddr = null;
         try {
             bindaddr = Settings.getString("IbBindAddress", "");
             if (bindaddr != null && bindaddr.length() > 0) {
-                mSocket = new ServerSocket(port,
+                mSocket = new ServerSocket(this.port,
                                             backlog,
                                             InetAddress.getByName(bindaddr));
             } else {
                 bindaddr = InetAddress.getLocalHost().toString();
-                mSocket =
-                new ServerSocket(port, backlog, InetAddress.getLocalHost());
+                mSocket = new ServerSocket(this.port, backlog,
+                                           InetAddress.getLocalHost());
             }
             Utils.logToConsole("IBControllerServer listening on address: " +
                                bindaddr + " port: " +
-                               java.lang.String.valueOf(port));
+                               java.lang.String.valueOf(this.port));
         } catch (IOException e) {
             Utils.logError("exception:\n" + e.toString());
             Utils.logToConsole("IBControllerServer failed to create socket");
