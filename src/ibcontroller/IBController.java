@@ -556,7 +556,7 @@ public class IBController {
         apiPort = (apiPort != 0) ? apiPort : Settings.getInt("ForceTwsApiPort", 0);
         boolean readOnlyApi = Settings.getBoolean("ReadOnlyAPI", false);
 
-        MyCachedThreadPool.getInstance().execute(new ConfigureTwsApiPortTask(apiPort, readOnlyApi));
+        MyCachedThreadPool.getInstance().execute(new ConfigureApiSettingTask(apiPort, readOnlyApi));
 
         if (isGateway()) {
             startGateway();
