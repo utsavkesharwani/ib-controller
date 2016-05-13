@@ -227,7 +227,7 @@ public class IBController {
         getTWSUserNameAndPassword(args);
         getFIXUserNameAndPassword(args);
 
-        startIBControllerServer();
+        startIBControllerServer(args);
 
         startShutdownTimerIfRequired();
 
@@ -235,7 +235,7 @@ public class IBController {
 
         startSavingTwsSettingsAutomatically();
 
-        startTwsOrGateway();
+        startTwsOrGateway(args);
     }
 
     public IBController() {
@@ -348,7 +348,7 @@ public class IBController {
     }
 
     private static boolean getFIXUserNameAndPasswordFromArguments(String[] args) {
-        if (args.length == 3 || args.length == 5) {
+        if (args.length >= 3) {
             _FIXUserName = args[1];
             _FIXPassword = args[2];
             return true;
@@ -505,8 +505,16 @@ public class IBController {
         ibgateway.GWClient.main(twsArgs);
     }
 
-    private static void startIBControllerServer() {
-        MyCachedThreadPool.getInstance().execute(new IBControllerServer());
+    private static void startIBControllerServer(String[] args) {
+        int port = 0;
+        if (args.length > 3) {
+            try {
+                port = Integer.parseInt(args[4]);
+            } catch (NumberFormatException e) {
+                port = 0;
+            }
+        }
+        MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
     }
 
     private static void startShutdownTimerIfRequired() {
@@ -536,10 +544,19 @@ public class IBController {
         jclient.LoginFrame.main(twsArgs);
     }
 
-    private static void startTwsOrGateway() {
-        int portNumber = Settings.getInt("ForceTwsApiPort", 0);
+    private static void startTwsOrGateway(String[] args) {
+        int apiPort = 0;
+        if (args.length > 4) {
+            try {
+                apiPort = Integer.parseInt(args[5]);
+            } catch (NumberFormatException e) {
+                apiPort = 0;
+            }
+        }
+        apiPort = (apiPort != 0) ? apiPort : Settings.getInt("ForceTwsApiPort", 0);
         boolean readOnlyApi = Settings.getBoolean("ReadOnlyAPI", false);
-        MyCachedThreadPool.getInstance().execute(new ConfigureApiSettingTask(portNumber, readOnlyApi));
+
+        MyCachedThreadPool.getInstance().execute(new ConfigureTwsApiPortTask(apiPort, readOnlyApi));
 
         if (isGateway()) {
             startGateway();
