@@ -437,7 +437,7 @@ public class IBController {
 
     private static boolean getTWSUserNameAndPasswordFromArguments(String[] args) {
         if (Settings.getBoolean("FIX", false)) {
-            if (args.length == 5) {
+            if (args.length > 3) {
                 _IBAPIUserName = args[3];
                 _IBAPIPassword = args[4];
                 return true;
@@ -507,7 +507,7 @@ public class IBController {
 
     private static void startIBControllerServer(String[] args) {
         int port = 0;
-        if (args.length > 3) {
+        if (args.length > 4) {
             try {
                 port = Integer.parseInt(args[4]);
             } catch (NumberFormatException e) {
