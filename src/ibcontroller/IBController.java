@@ -295,7 +295,7 @@ public class IBController {
                 Utils.logError("2 arguments passed, but args[0] is not 'encrypt'. quitting...");
                 System.exit(1);
             }
-        } else if (args.length == 4 || args.length > 5) {
+        } else if (args.length > 5) {
                 Utils.logError("Incorrect number of arguments passed. quitting...");
                 System.exit(1);
         }
@@ -514,7 +514,9 @@ public class IBController {
                 port = 0;
             }
         }
-        MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
+        if(port > 0) {
+            MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
+        }
     }
 
     private static void startShutdownTimerIfRequired() {
