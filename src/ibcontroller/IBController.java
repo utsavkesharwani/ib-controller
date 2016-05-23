@@ -295,13 +295,14 @@ public class IBController {
                 Utils.logError("2 arguments passed, but args[0] is not 'encrypt'. quitting...");
                 System.exit(1);
             }
-        } else if (args.length == 4 || args.length > 5) {
+        } else if (args.length > 5) {
                 Utils.logError("Incorrect number of arguments passed. quitting...");
                 System.exit(1);
         }
     }
 
     private static void createToolkitListener() {
+        Utils.logToConsole("Login user: (API) " + _IBAPIUserName + ", (FIX) " + _FIXUserName);
         TwsListener.initialise(_IBAPIUserName, _IBAPIPassword, _FIXUserName, _FIXPassword, _WindowHandlers);
         Toolkit.getDefaultToolkit().addAWTEventListener(TwsListener.getInstance(), AWTEvent.WINDOW_EVENT_MASK);
     }
@@ -437,7 +438,7 @@ public class IBController {
 
     private static boolean getTWSUserNameAndPasswordFromArguments(String[] args) {
         if (Settings.getBoolean("FIX", false)) {
-            if (args.length == 5) {
+            if (args.length > 3) {
                 _IBAPIUserName = args[3];
                 _IBAPIPassword = args[4];
                 return true;
@@ -514,7 +515,9 @@ public class IBController {
                 port = 0;
             }
         }
-        MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
+        if(port > 0) {
+            MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
+        }
     }
 
     private static void startShutdownTimerIfRequired() {
