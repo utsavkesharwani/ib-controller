@@ -302,6 +302,7 @@ public class IBController {
     }
 
     private static void createToolkitListener() {
+        Utils.logToConsole("Login user: (API) " + _IBAPIUserName + ", (FIX) " + _FIXUserName);
         TwsListener.initialise(_IBAPIUserName, _IBAPIPassword, _FIXUserName, _FIXPassword, _WindowHandlers);
         Toolkit.getDefaultToolkit().addAWTEventListener(TwsListener.getInstance(), AWTEvent.WINDOW_EVENT_MASK);
     }
@@ -444,7 +445,7 @@ public class IBController {
             } else {
                 return false;
             }
-        } else if (args.length == 3) {
+        } else if (args.length > 2) {
             _IBAPIUserName = args[1];
             _IBAPIPassword = args[2];
             return true;
