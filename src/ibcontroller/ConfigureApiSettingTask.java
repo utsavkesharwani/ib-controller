@@ -5,10 +5,12 @@ import java.awt.Container;
 import javax.swing.*;
 
 class ConfigureApiSettingTask implements Runnable {
-    final boolean readOnlyApi;
-    final int apiPort;
+    private final boolean readOnlyApi;
+    private final int apiPort;
+    private final boolean isGateway;
 
-    ConfigureApiSettingTask(int apiPort, boolean readOnlyApi) {
+    ConfigureApiSettingTask(boolean isGateway, int apiPort, boolean readOnlyApi) {
+        this.isGateway = isGateway;
         this.apiPort = apiPort;
         this.readOnlyApi = readOnlyApi;
     }
@@ -17,7 +19,7 @@ class ConfigureApiSettingTask implements Runnable {
     public void run() {
         try {
             // blocks the thread until the config dialog is available
-            final JDialog configDialog = TwsListener.getConfigDialog();
+            final JDialog configDialog = ConfigDialogManager.configDialogManager().getConfigDialog();
 
             GuiExecutor.instance().execute(new Runnable(){
                 @Override
@@ -35,30 +37,30 @@ class ConfigureApiSettingTask implements Runnable {
         try {
             Utils.logToConsole("Performing Api setting configuration");
 
-            if (!TwsListener.selectConfigSection(configDialog, new String[] {"API","Settings"}))
+            if (!Utils.selectConfigSection(configDialog, new String[] {"API","Settings"}))
                 // older versions of TWS don't have the Settings node below the API node
-                TwsListener.selectConfigSection(configDialog, new String[] {"API"});
+                Utils.selectConfigSection(configDialog, new String[] {"API"});
 
             if (apiPort != 0) {
-                Component comp = Utils.findComponent(configDialog, "Socket port");
+                Component comp = SwingUtils.findComponent(configDialog, "Socket port");
                 if (comp == null)
                     throw new IBControllerException("could not find socket port component");
 
-                JTextField tf = Utils.findTextField((Container)comp, 0);
+                JTextField tf = SwingUtils.findTextField((Container)comp, 0);
                 if (tf == null) throw new IBControllerException("could not find socket port field");
 
                 int currentPort = Integer.parseInt(tf.getText());
                 if (currentPort == apiPort) {
                     Utils.logToConsole("TWS API socket port is already set to " + tf.getText());
                 } else {
-                    if (!IBController.isGateway()) {
-                        JCheckBox cb = Utils.findCheckBox(configDialog,
+                    if (!this.isGateway) {
+                        JCheckBox cb = SwingUtils.findCheckBox(configDialog,
                                                           "Enable ActiveX and Socket Clients");
                         if (cb == null) {
                             throw new IBControllerException("could not find Enable ActiveX checkbox");
                         }
                         if (cb.isSelected()) {
-                            TwsListener.setApiConfigChangeConfirmationExpected(true);
+                            ConfigDialogManager.configDialogManager().setApiConfigChangeConfirmationExpected(true);
                         }
                     }
                     Utils.logToConsole("TWS API socket port was set to " + tf.getText());
@@ -67,7 +69,7 @@ class ConfigureApiSettingTask implements Runnable {
                 }
             }
 
-            JCheckBox cb = Utils.findCheckBox(configDialog, "Read-Only API");
+            JCheckBox cb = SwingUtils.findCheckBox(configDialog, "Read-Only API");
             if (cb == null) throw new IBControllerException("could not find Read-Only API checkbox");
 
             if(cb.isSelected() && readOnlyApi) {
@@ -78,7 +80,7 @@ class ConfigureApiSettingTask implements Runnable {
                 Utils.logToConsole("Unselect and disable Read-Only API");
             }
 
-            Utils.clickButton(configDialog, "OK");
+            SwingUtils.clickButton(configDialog, "OK");
 
             configDialog.setVisible(false);
         } catch (IBControllerException e) {

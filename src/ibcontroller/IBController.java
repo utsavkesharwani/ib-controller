@@ -20,7 +20,13 @@ package ibcontroller;
 
 import java.awt.AWTEvent;
 import java.awt.Toolkit;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -30,6 +36,8 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import javax.imageio.IIOException;
+import javax.transaction.InvalidTransactionException;
 
 
 /**
@@ -210,78 +218,54 @@ public class IBController {
 	 *    If length == 0, we assume that the ini file is located in the current user
      *                    directory in a file called "IBController.ini".
 	 *    If length == 2 and args[0] is "encrypt", we print out the encryption of args[1].
+     * @throws java.lang.Exception
      */
-    public static void main(String[] args) {
-        load(args, false);
-    }
 
-    static void load(String[] args, boolean gatewayOnly) {
-        _GatewayOnly = gatewayOnly;
+    private IBController() { }
 
-        printProperties();
-
+    public static void main(final String[] args) throws Exception {
         checkArguments(args);
 
-        getSettings(args);
-
-        getTWSUserNameAndPassword(args);
-        getFIXUserNameAndPassword(args);
-
-        startIBControllerServer(args);
-
-        startShutdownTimerIfRequired();
-
-        createToolkitListener();
-
-        startSavingTwsSettingsAutomatically();
-
-        startTwsOrGateway(args);
+        setupDefaultEnvironment(args, false);
+        load();
+    }
+    
+    static void setupDefaultEnvironment(final String[] args, final boolean isGateway) throws Exception {
+        Settings.initialise(new DefaultSettings(args));
+        LoginManager.initialise(new DefaultLoginManager(args));
+        MainWindowManager.initialise(new DefaultMainWindowManager(isGateway));
+        TradingModeManager.initialise(new DefaultTradingModeManager(args));
     }
 
-    public IBController() {
-        super();
-    }
-
-    private static boolean _GatewayOnly;
-
-    static boolean isGateway() {
-        return _GatewayOnly;
-    }
-
-    /**
-     * IBAPI username - can either be supplied from the .ini file or as args[1]
-     * NB: if IBAPI username is supplied in args[1], then the password must
-     * be in args[2]. If IBAPI username is supplied in .ini, then the password must
-     * also be in .ini.
-     */
-    private static String _IBAPIUserName;
-
-    /**
-     * unencrypted IBAPI password - can either be supplied from the .ini file or as args[2]
-     */
-    private static String _IBAPIPassword;
-
-    /**
-     * FIX username - can either be supplied from the .ini file or as args[1]
-     * NB: if username is supplied in args[1], then the password must
-     * be in args[2], and the IBAPI username and password may be in
-     * args[3] and args[4]. If username is supplied in .ini, then the password must
-     * also be in .ini.
-     */
-    private static String _FIXUserName;
-
-    /**
-     * unencrypted password - can either be supplied from the .ini file or as args[2]
-     */
-    private static String _FIXPassword;
-
-    private static final List<WindowHandler> _WindowHandlers = new ArrayList<WindowHandler>();
-
-    static {
-        createWindowHandlers();
-    }
-
-    private static void checkArguments(String[] args) {
+    static void checkArguments(String[] args) {
+        /**
+         * Allowable parameter combinations:
+         * 
+         * 1. No parameters
+         * 
+         * 2. ENCRYPT <password>
+         * 
+         * 3. <iniFile> [<tradingMode>]
+         * 
+         * 4. <iniFile> <apiUserName> <apiPassword> [<tradingMode>]
+         * 
+         * 5. <iniFile> <fixUserName> <fixPassword> <apiUserName> <apiPassword> [<tradingMode>]
+         * 
+         * where:
+         * 
+         *      <iniFile>       ::= NULL | path-and-filename-of-.ini-file 
+         * 
+         *      <tradingMode>   ::= blank | LIVETRADING | PAPERTRADING
+         * 
+         *      <apiUserName>   ::= blank | username-for-TWS
+         * 
+         *      <apiPassword>   ::= blank | password-for-TWS
+         * 
+         *      <fixUserName>   ::= blank | username-for-FIX-CTCI-Gateway
+         * 
+         *      <fixPassword>   ::= blank | password-for-FIX-CTCI-Gateway
+         * 
+         */
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("encrypt")) {
                 Utils.logRawToConsole("========================================================================");
@@ -291,97 +275,73 @@ public class IBController {
                 Utils.logRawToConsole("");
                 Utils.logRawToConsole("========================================================================");
                 System.exit(0);
-            } else {
-                Utils.logError("2 arguments passed, but args[0] is not 'encrypt'. quitting...");
-                System.exit(1);
             }
-        } else if (args.length > 5) {
-                Utils.logError("Incorrect number of arguments passed. quitting...");
-                System.exit(1);
+        } else if (args.length > 6) {
+            Utils.logError("Incorrect number of arguments passed. quitting...");
+            Utils.logRawToConsole("Number of arguments = " +args.length);
+            for (String arg : args) {
+                Utils.logRawToConsole(arg);
+            }
+            System.exit(1);
         }
+    }
+
+    public static void load() {
+        printProperties();
+        
+        Settings.settings().logDiagnosticMessage();
+        LoginManager.loginManager().logDiagnosticMessage();
+        MainWindowManager.mainWindowManager().logDiagnosticMessage();
+        TradingModeManager.tradingModeManager().logDiagnosticMessage();
+        ConfigDialogManager.configDialogManager().logDiagnosticMessage();
+        
+        boolean isGateway = MainWindowManager.mainWindowManager().isGateway();
+        
+        startIBControllerServer(isGateway);
+
+        startShutdownTimerIfRequired(isGateway);
+
+        createToolkitListener();
+        
+        startSavingTwsSettingsAutomatically();
+
+        startTwsOrGateway(isGateway);
     }
 
     private static void createToolkitListener() {
-        Utils.logToConsole("Login user: (API) " + _IBAPIUserName + ", (FIX) " + _FIXUserName);
-        TwsListener.initialise(_IBAPIUserName, _IBAPIPassword, _FIXUserName, _FIXPassword, _WindowHandlers);
-        Toolkit.getDefaultToolkit().addAWTEventListener(TwsListener.getInstance(), AWTEvent.WINDOW_EVENT_MASK);
+        Toolkit.getDefaultToolkit().addAWTEventListener(new TwsListener(createWindowHandlers()), AWTEvent.WINDOW_EVENT_MASK);
     }
 
-    private static void createWindowHandlers() {
-        _WindowHandlers.add(new AcceptIncomingConnectionDialogHandler());
-        _WindowHandlers.add(new BlindTradingWarningDialogHandler());
-        _WindowHandlers.add(new ExitSessionFrameHandler());
-        _WindowHandlers.add(new LoginFrameHandler());
-        _WindowHandlers.add(new GatewayLoginFrameHandler());
-        _WindowHandlers.add(new MainWindowFrameHandler());
-        _WindowHandlers.add(new GatewayMainWindowFrameHandler());
-        _WindowHandlers.add(new NewerVersionDialogHandler());
-        _WindowHandlers.add(new NewerVersionFrameHandler());
-        _WindowHandlers.add(new NotCurrentlyAvailableDialogHandler());
-        _WindowHandlers.add(new TipOfTheDayDialogHandler());
-        _WindowHandlers.add(new NSEComplianceFrameHandler());
-        _WindowHandlers.add(new PasswordExpiryWarningFrameHandler());
-        _WindowHandlers.add(new GlobalConfigurationDialogHandler());
-        _WindowHandlers.add(new TradesFrameHandler());
-        _WindowHandlers.add(new ExistingSessionDetectedDialogHandler());
-        _WindowHandlers.add(new ApiChangeConfirmationDialogHandler());
-        _WindowHandlers.add(new SplashFrameHandler());
-        _WindowHandlers.add(new SecurityCodeDialogHandler());
-        _WindowHandlers.add(new ReloginDialogHandler());
-    }
+    private static List<WindowHandler> createWindowHandlers() {
+        List<WindowHandler> windowHandlers = new ArrayList<WindowHandler>();
 
-    private static String getFIXPasswordFromProperties() {
-        String password = Settings.getString("FIXPassword", "");
-        if (password.length() != 0) {
-            if (isFIXPasswordEncrypted()) password = Encryptor.decrypt(password);
-        }
-        return password;
+        windowHandlers.add(new AcceptIncomingConnectionDialogHandler());
+        windowHandlers.add(new BlindTradingWarningDialogHandler());
+        windowHandlers.add(new ExitSessionFrameHandler());
+        windowHandlers.add(new LoginFrameHandler());
+        windowHandlers.add(new GatewayLoginFrameHandler());
+        windowHandlers.add(new MainWindowFrameHandler());
+        windowHandlers.add(new GatewayMainWindowFrameHandler());
+        windowHandlers.add(new NewerVersionDialogHandler());
+        windowHandlers.add(new NewerVersionFrameHandler());
+        windowHandlers.add(new NotCurrentlyAvailableDialogHandler());
+        windowHandlers.add(new TipOfTheDayDialogHandler());
+        windowHandlers.add(new NSEComplianceFrameHandler());
+        windowHandlers.add(new PasswordExpiryWarningFrameHandler());
+        windowHandlers.add(new GlobalConfigurationDialogHandler());
+        windowHandlers.add(new TradesFrameHandler());
+        windowHandlers.add(new ExistingSessionDetectedDialogHandler());
+        windowHandlers.add(new ApiChangeConfirmationDialogHandler());
+        windowHandlers.add(new SplashFrameHandler());
+        windowHandlers.add(new SecurityCodeDialogHandler());
+        windowHandlers.add(new ReloginDialogHandler());
+        windowHandlers.add(new NonBrokerageAccountDialogHandler());
+        
+        return windowHandlers;
     }
-
-    private static void getFIXUserNameAndPassword(String[] args) {
-        if (! getFIXUserNameAndPasswordFromArguments(args)) {
-            getFIXUserNameAndPasswordFromProperties();
-        }
-    }
-
-    private static String getFIXUserNameFromProperties() {
-        return Settings.getString("FIXLoginId", "");
-    }
-
-    private static boolean getFIXUserNameAndPasswordFromArguments(String[] args) {
-        if (args.length >= 3) {
-            _FIXUserName = args[1];
-            _FIXPassword = args[2];
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private static void getFIXUserNameAndPasswordFromProperties() {
-        _FIXUserName = getFIXUserNameFromProperties();
-        _FIXPassword = getFIXPasswordFromProperties();
-    }
-
-    private static void getSettings(String[] args) {
-        String iniPath;
-        if (args.length == 0 || args[0].equals("NULL")) {
-            iniPath = getWorkingDirectory() + "IBController." + getComputerUserName() + ".ini";
-        } else {// args.length >= 1
-            iniPath = args[0];
-        }
-        File finiPath = new File(iniPath);
-        if (!finiPath.isFile() || !finiPath.exists()) {
-            Utils.logError("ini file \"" + iniPath +
-                               "\" either does not exist, or is a directory.  quitting...");
-            System.exit(1);
-        }
-        Utils.logToConsole("ini file is " + iniPath);
-        Settings.load(iniPath);
-    }
-
+    
     private static Date getShutdownTime() {
-        String shutdownTimeSetting = Settings.getString("ClosedownAt", "");
+        String shutdownTimeSetting = Settings.settings().getString("ClosedownAt", "");
         if (shutdownTimeSetting.length() == 0) {
             return null;
         } else {
@@ -412,80 +372,8 @@ public class IBController {
         }
     }
 
-    private static String getTWSPasswordFromProperties() {
-        String password = Settings.getString("IbPassword", "");
-        if (password.length() != 0) {
-            if (isPasswordEncrypted()) password = Encryptor.decrypt(password);
-        }
-        return password;
-    }
-
     private static String getTWSSettingsDirectory() {
-        String dir = Settings.getString("IbDir", System.getProperty("user.dir"));
-        Utils.logToConsole("TWS settings directory is " + dir);
-        return dir;
-    }
-
-    private static void getTWSUserNameAndPassword(String[] args) {
-        if (! getTWSUserNameAndPasswordFromArguments(args)) {
-            getTWSUserNameAndPasswordFromProperties();
-        }
-    }
-
-    private static String getTWSUserNameFromProperties() {
-        return Settings.getString("IbLoginId", "");
-    }
-
-    private static boolean getTWSUserNameAndPasswordFromArguments(String[] args) {
-        if (Settings.getBoolean("FIX", false)) {
-            if (args.length > 3) {
-                _IBAPIUserName = args[3];
-                _IBAPIPassword = args[4];
-                return true;
-            } else {
-                return false;
-            }
-        } else if (args.length > 2) {
-            _IBAPIUserName = args[1];
-            _IBAPIPassword = args[2];
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private static void getTWSUserNameAndPasswordFromProperties() {
-        _IBAPIUserName = getTWSUserNameFromProperties();
-        _IBAPIPassword = getTWSPasswordFromProperties();
-    }
-
-    private static String getComputerUserName() {
-        StringBuilder sb = new StringBuilder(System.getProperty("user.name"));
-        int i;
-        for (i = 0; i < sb.length(); i++) {
-            char c = sb.charAt(i);
-            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-                continue;
-            }
-            if (c >= 'A' && c <= 'Z') {
-                sb.setCharAt(i, Character.toLowerCase(c));
-            } else {
-                sb.setCharAt(i, '_');
-            }
-        }
-        return sb.toString();
-    }
-
-    private static String getWorkingDirectory() {
-        return System.getProperty("user.dir") + File.separator;
-    }
-
-    private static boolean isFIXPasswordEncrypted() {
-        return Settings.getBoolean("FIXPasswordEncrypted", true);
-    }
-
-    private static boolean isPasswordEncrypted() {
-        return Settings.getBoolean("PasswordEncrypted", true);
+        return Settings.settings().getString("IbDir", System.getProperty("user.dir"));
     }
 
     private static void printProperties() {
@@ -503,28 +391,26 @@ public class IBController {
     private static void startGateway() {
         String[] twsArgs = new String[1];
         twsArgs[0] = getTWSSettingsDirectory();
-        ibgateway.GWClient.main(twsArgs);
-    }
-
-    private static void startIBControllerServer(String[] args) {
-        int port = 0;
-        if (args.length > 4) {
-            try {
-                port = Integer.parseInt(args[4]);
-            } catch (NumberFormatException e) {
-                port = 0;
-            }
-        }
-        if(port > 0) {
-            MyCachedThreadPool.getInstance().execute(new IBControllerServer(port));
+        Utils.logToConsole("TWS settings directory is " + twsArgs[0]);
+        try {
+            ibgateway.GWClient.main(twsArgs);
+        } catch (Throwable t) {
+            Utils.logError("Can't find the Gateway entry point: ibgateway.GWClient.main. Gateway is not correctly installed.");
+            t.printStackTrace(Utils.getErrStream());
+            System.exit(1);
         }
     }
 
-    private static void startShutdownTimerIfRequired() {
+
+    private static void startIBControllerServer(boolean isGateway) {
+        MyCachedThreadPool.getInstance().execute(new IBControllerServer(isGateway));
+    }
+
+    private static void startShutdownTimerIfRequired(boolean isGateway) {
         Date shutdownTime = getShutdownTime();
         if (! (shutdownTime == null)) {
             long delay = shutdownTime.getTime() - System.currentTimeMillis();
-            Utils.logToConsole((isGateway() ? "Gateway" : "TWS") +
+            Utils.logToConsole((isGateway ? "Gateway" : "TWS") +
                             " will be shut down at " +
                            (new SimpleDateFormat("yyyy/MM/dd HH:mm")).format(shutdownTime));
             MyScheduledExecutorService.getInstance().schedule(new Runnable() {
@@ -537,36 +423,136 @@ public class IBController {
     }
 
     private static void startTws() {
-        if (Settings.getBoolean("ShowAllTrades", false)) {
-            MyCachedThreadPool.getInstance().execute(new Runnable () {
-                @Override public void run() {TwsListener.showTradesLogWindow();}
-            });
+        ensureJtsIniExists();
+        if (Settings.settings().getBoolean("ShowAllTrades", false)) {
+            Utils.showTradesLogWindow();
         }
         String[] twsArgs = new String[1];
         twsArgs[0] = getTWSSettingsDirectory();
-        jclient.LoginFrame.main(twsArgs);
+        Utils.logToConsole("TWS settings directory is " + twsArgs[0]);
+        try {
+            jclient.LoginFrame.main(twsArgs);
+        } catch (Throwable t) {
+            Utils.logError("Can't find the TWS entry point: jclient.LoginFrame.main; TWS is not correctly installed.");
+            t.printStackTrace(Utils.getErrStream());
+            System.exit(1);
+        }
+    }
+    
+    private static void ensureJtsIniExists() {
+        /* when TWS starts, there must exist a jts.ini file in the TWS settings directory 
+        *  containing at least the following minimum contents:
+        *
+        * [Logon]
+        * s3store=true
+        *
+        * If this file doesn't exist, or doesn't contain these lines, then TWS won't 
+        * include the 'Store settings on server' checkbox in the login dialog, which
+        * prevents IBController properly handling the StoreSettingsOnServer ini file
+        * option.
+        * 
+        * Note that this is not a problem for the Gateway, which doesn't provide the 
+        * option to store the settings on the server.
+        *
+        */
+        File jtsIniFile = getJtsIniFile();
+        if (jtsIniFile.isFile()) {
+            updateExistingJtsIniFile(jtsIniFile);
+        } else {
+            createMinimalJtsIniFile(jtsIniFile);
+        }
+    }
+    
+    private static File getJtsIniFile() {
+        String jtsIniPath = getTWSSettingsDirectory() + File.separatorChar + "jts.ini";
+        File jtsIniFile = new File(jtsIniPath);
+        if (jtsIniFile.isDirectory()) {
+            Utils.logError(jtsIniPath + " already exists but is a directory");
+            System.exit(1);
+        }
+        return jtsIniFile;
+    }
+    
+    private static void updateExistingJtsIniFile(File jtsIniFile) {
+        Utils.logToConsole("Ensuring " + jtsIniFile.getPath() + " contains s3store=true");
+
+        List<String> lines = getJtsIniFileLines(jtsIniFile);
+        jtsIniFile.delete();
+        rewriteExistingJtsIniFileLines(jtsIniFile, lines);
+    }
+    
+    private static List<String> getJtsIniFileLines (File jtsIniFile) {
+        List<String> lines = new ArrayList<>();
+
+        try (BufferedReader r = new BufferedReader(new FileReader(jtsIniFile))) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                lines.add(line);
+            }
+        } catch (IOException e) {
+            Utils.logError("Unexpected IOException on " + jtsIniFile + ": " + e.getMessage());
+            System.exit(1);
+        }
+        return lines;
+    }
+    
+    private static void createMinimalJtsIniFile(File jtsIniFile) {
+        Utils.logToConsole("Creating minimal " + jtsIniFile.getPath());
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(jtsIniFile))) {
+            writeRequiredJtsIniFileLines(w, jtsIniFile);
+        } catch (IOException e) {
+            Utils.logError("Problem creating " + jtsIniFile.getPath() + ": " + e.getMessage());
+            System.exit(1);
+        }
+    }
+    
+    private static void writeRequiredJtsIniFileLines(BufferedWriter w, File jtsIniFile) {
+        Utils.logToConsole("Writing required lines to "  + jtsIniFile.getPath());
+        try {
+            w.write("[Logon]");
+            w.newLine();
+            w.write("s3store=true");
+            w.newLine();
+        } catch (IOException e) {
+            Utils.logError("Problem writing to " + jtsIniFile.getPath() + ": " + e.getMessage());
+            System.exit(1);
+        }
+    }
+    
+    private static void rewriteExistingJtsIniFileLines(File jtsIniFile, List<String> lines) {
+        boolean foundLogon = false;
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(jtsIniFile))) {
+            for (String l:lines) {
+                if (l.compareTo("[Logon]") == 0) {
+                    foundLogon = true;
+                    writeRequiredJtsIniFileLines(w, jtsIniFile);
+                } else if (l.compareTo("s3store=true") != 0) {
+                    w.write(l);
+                    w.newLine();
+                }
+            }
+            if (! foundLogon) {
+                writeRequiredJtsIniFileLines(w, jtsIniFile);
+            }
+        } catch (IOException e){
+            Utils.logError("Problem writing to " + jtsIniFile.getPath() + ": " + e.getMessage());
+            System.exit(1);
+        }
     }
 
-    private static void startTwsOrGateway(String[] args) {
-        int apiPort = 0;
-        if (args.length > 3) {
-            try {
-                apiPort = Integer.parseInt(args[3]);
-            } catch (NumberFormatException e) {
-                apiPort = 0;
-            }
-        }
-        apiPort = (apiPort != 0) ? apiPort : Settings.getInt("ForceTwsApiPort", 0);
-        boolean readOnlyApi = Settings.getBoolean("ReadOnlyAPI", false);
-
-        MyCachedThreadPool.getInstance().execute(new ConfigureApiSettingTask(apiPort, readOnlyApi));
-
-        if (isGateway()) {
+    private static void startTwsOrGateway(boolean isGateway) {
+        if (isGateway) {
             startGateway();
         } else {
             startTws();
         }
-        Utils.sendConsoleOutputToTwsLog(!Settings.getBoolean("LogToConsole", false));
+
+        int portNumber = Settings.settings().getInt("ForceTwsApiPort", 0);
+        //if (portNumber != 0) MyCachedThreadPool.getInstance().execute(new ConfigureTwsApiPortTask(portNumber, isGateway));
+        boolean readOnlyApi = true; //Settings.getBoolean("ReadOnlyAPI", false);
+        MyCachedThreadPool.getInstance().execute(new ConfigureApiSettingTask(isGateway, portNumber, readOnlyApi));
+
+        Utils.sendConsoleOutputToTwsLog(!Settings.settings().getBoolean("LogToConsole", false));
     }
 
     private static void startSavingTwsSettingsAutomatically() {
