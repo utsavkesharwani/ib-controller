@@ -1,15 +1,15 @@
 <project name="IBController" default="dist" basedir=".">
     <property environment="env"/>
-    <fail unless="env.TWS" message="Environment variable 'TWS' not set (set it to the fully-qualified directory name containing the TWS jar files)."/>
 
     <property name="ver" value="3.2.0"/>
     <property name="src" location="src"/>
     <property name="resources" location="resources"/>
+    <property name="lib" location="lib" />
     <property name="target" location="target"/>
     <property name="dist"  location="dist"/>
 
     <path id="external.classpath">
-        <fileset dir="${env.TWS}" includes="**/*.jar"/>
+        <fileset dir="${lib}" includes="**/*.jar"/>
     </path>
 
     <target name="clean" description="clean up">
