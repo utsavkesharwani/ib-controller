@@ -48,11 +48,7 @@ class CapPriceConfirmDialogHandler implements WindowHandler {
     public boolean recogniseWindow(Window window) {
         if (! (window instanceof JDialog)) return false;
 
-        JTextField tf = SwingUtils.findTextField(window, 0);
-        if(tf != null) {
-            String text = tf.getText();
-            return ((text != null) && text.contains("THIS MAY CAUSE AN ORDER THAT WOULD OTHERWISE BE MARKETABLE NOT TO BE EXECUTED"));
-        } 
-        return false;
+        String warning = "THIS MAY CAUSE AN ORDER THAT WOULD OTHERWISE BE MARKETABLE NOT TO BE EXECUTED";
+        return (SwingUtils.findMessage(window, warning) != null);
     }
 }

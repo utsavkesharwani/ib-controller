@@ -185,6 +185,24 @@ class SwingUtils {
         return null;
     }
 
+    static JOptionPane findMessage(Container container, String text) {
+        ComponentIterator iter = new ComponentIterator(container);
+        while (iter.hasNext()) {
+            Component component = iter.next();
+
+            if(component instanceof JOptionPane) {
+                Utils.logError("======>" + ((JOptionPane)component).getMessage().toString());
+            }
+
+            if (component instanceof JOptionPane && 
+                    ((JOptionPane)component).getMessage() != null && 
+                        ((String)((JOptionPane)component).getMessage()).contains(text)) {
+                return (JOptionPane)component;
+            }
+        }
+
+        return null;
+    }
     /**
      * Traverses a container hierarchy and returns the ith JTextField
      * (0 based indexing).
