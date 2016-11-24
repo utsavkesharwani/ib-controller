@@ -176,11 +176,11 @@ public class DefaultLoginManager extends LoginManager {
             } else {
                 return false;
             }
-        } else if (args.length == 3 || args.length == 4) {
+        } else if (args.length == 3 || args.length == 4 || args.length == 5) {
             IBAPIUserName = args[1];
             IBAPIPassword = args[2];
             return true;
-        } else if (args.length == 5 || args.length == 6) {
+        } else if (args.length == 6) {
             Utils.logError("Incorrect number of arguments passed. quitting...");
             Utils.logRawToConsole("Number of arguments = " +args.length + " which is only permitted if FIX=yes");
             for (String arg : args) {

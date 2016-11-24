@@ -227,7 +227,7 @@ public class IBController {
         checkArguments(args);
 
         setupDefaultEnvironment(args, false);
-        load();
+        load(args);
     }
     
     static void setupDefaultEnvironment(final String[] args, final boolean isGateway) throws Exception {
@@ -249,7 +249,9 @@ public class IBController {
          * 
          * 4. <iniFile> <apiUserName> <apiPassword> [<tradingMode>]
          * 
-         * 5. <iniFile> <fixUserName> <fixPassword> <apiUserName> <apiPassword> [<tradingMode>]
+         * 5. <iniFile> <apiUserName> <apiPassword> <apiPort> [<tradingMode>]
+         * 
+         * 6. <iniFile> <fixUserName> <fixPassword> <apiUserName> <apiPassword> [<tradingMode>]
          * 
          * where:
          * 
@@ -260,6 +262,8 @@ public class IBController {
          *      <apiUserName>   ::= blank | username-for-TWS
          * 
          *      <apiPassword>   ::= blank | password-for-TWS
+         *    
+         *      <apiPort>       ::= blank | api-port-for-TWS
          * 
          *      <fixUserName>   ::= blank | username-for-FIX-CTCI-Gateway
          * 
@@ -286,7 +290,7 @@ public class IBController {
         }
     }
 
-    public static void load() {
+    public static void load(String[] args) {
         printProperties();
         
         Settings.settings().logDiagnosticMessage();
@@ -297,15 +301,19 @@ public class IBController {
         
         boolean isGateway = MainWindowManager.mainWindowManager().isGateway();
         
-        startIBControllerServer(isGateway);
-
+        if(Settings.settings().getInt("IbControllerPort", 0) > 0) {
+        	startIBControllerServer(isGateway);
+    	} else {
+    		Utils.logToConsole("IbControllerPort is not set, and IBControllerServer doesn't start up.");
+    	}	
+    	
         startShutdownTimerIfRequired(isGateway);
 
         createToolkitListener();
         
         startSavingTwsSettingsAutomatically();
 
-        startTwsOrGateway(isGateway);
+        startTwsOrGateway(isGateway, args);
     }
 
     private static void createToolkitListener() {
@@ -336,6 +344,7 @@ public class IBController {
         windowHandlers.add(new SecurityCodeDialogHandler());
         windowHandlers.add(new ReloginDialogHandler());
         windowHandlers.add(new NonBrokerageAccountDialogHandler());
+        windowHandlers.add(new CapPriceConfirmDialogHandler());
         
         return windowHandlers;
     }
@@ -540,18 +549,27 @@ public class IBController {
         }
     }
 
-    private static void startTwsOrGateway(boolean isGateway) {
+    private static void startTwsOrGateway(boolean isGateway, String[] args) {
         if (isGateway) {
             startGateway();
         } else {
             startTws();
         }
 
-        int portNumber = Settings.settings().getInt("ForceTwsApiPort", 0);
+       int apiPort = 0;
+        if (args.length >= 4) {
+            try {
+                apiPort = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                apiPort = 0;
+            }
+        }
+
+        int portNumber = (apiPort != 0) ? apiPort : Settings.settings().getInt("ForceTwsApiPort", 0);
         boolean readOnlyApi = Settings.settings().getBoolean("ReadOnlyAPI", false);
+
         MyCachedThreadPool.getInstance().execute(new ConfigureApiSettingTask(isGateway, portNumber, readOnlyApi));
-        MyCachedThreadPool.getInstance().execute(new BypassApiOrderTask());
-        
+
         Utils.sendConsoleOutputToTwsLog(!Settings.settings().getBoolean("LogToConsole", false));
     }
 

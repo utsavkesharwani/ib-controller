@@ -45,6 +45,8 @@ public class DefaultTradingModeManager extends TradingModeManager {
             setTradingMode(args[1]);
         } else if (args.length == 4) {
             setTradingMode(args[3]);
+        } else if (args.length == 5) {
+            setTradingMode(args[4]);
         } else if (args.length == 6) {
             setTradingMode(args[5]);
         }

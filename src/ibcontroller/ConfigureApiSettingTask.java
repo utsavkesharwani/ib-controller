@@ -80,11 +80,31 @@ class ConfigureApiSettingTask implements Runnable {
                 Utils.logToConsole("Unselect and disable Read-Only API");
             }
 
-            SwingUtils.clickButton(configDialog, "OK");
+            // Bypass order precations for API orders
+            Utils.logToConsole("Enable bypassing order precautions for API orders");
+            
+            if (!Utils.selectConfigSection(configDialog, new String[] {"API","Precautions"}))
+                // older versions of TWS don't have the Settings node below the API node
+                Utils.selectConfigSection(configDialog, new String[] {"API"});
 
+            JCheckBox cb2 = SwingUtils.findCheckBox(configDialog, "Bypass Order Precautions for API Orders");
+            if (cb2 == null) throw new IBControllerException("could not find Bypass API Order Precautions checkbox");
+
+            if (!cb2.isSelected()) {
+                cb2.doClick();
+                Utils.logToConsole("TWS has been configured to bypass API orders");
+            } else {
+                Utils.logToConsole("TWS is already configured to bypass API orders");
+            }
+
+            // End
+
+            SwingUtils.clickButton(configDialog, "OK");
             configDialog.setVisible(false);
+
         } catch (IBControllerException e) {
             Utils.logError("" + e.getMessage());
         }
     }
+
 }
