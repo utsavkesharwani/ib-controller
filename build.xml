@@ -1,15 +1,15 @@
 <project name="IBController" default="dist" basedir=".">
     <property environment="env"/>
 
-    <property name="ver" value="3.2.0"/>
+    <property name="ver" value="3.2.0-ibg-b963"/>
     <property name="src" location="src"/>
     <property name="resources" location="resources"/>
-    <property name="lib" location="lib" />
+    <property name="tws.lib" location="lib" />
     <property name="target" location="target"/>
     <property name="dist"  location="dist"/>
 
     <path id="external.classpath">
-        <fileset dir="${lib}" includes="**/*.jar"/>
+        <fileset dir="${tws.lib}" includes="**/*.jar"/>
     </path>
 
     <target name="clean" description="clean up">
@@ -26,7 +26,15 @@
     </target>
 
     <target name="jar" depends="compile" description="generate the jar">
-        <jar jarfile="${resources}/IBController.jar" basedir="${target}/classes"/>
+        <jar jarfile="${resources}/IBController.jar" basedir="${target}/classes">
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Specification-Title" value="IBController"/>
+                <attribute name="Specification-Version" value="${ver}"/>
+                <attribute name="Implementation-Title" value="IBController"/>
+                <attribute name="Implementation-Version" value="${ver} ${TODAY}"/> 
+            </manifest>
+        </jar>
     </target>
 
     <target name="dist" depends="jar" description="generate the distribution zip">
@@ -39,4 +47,5 @@
 	</copy>
         <zip destfile="${dist}/IBController-${ver}.zip" basedir="${target}/IBController" includes="**"/>
     </target>
+
 </project>
