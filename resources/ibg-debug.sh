@@ -1,0 +1,11 @@
+TWSUSERID=
+TWSPASSWORD=
+TWSAPIPORT=4001
+IBCTRLPORT=7462
+
+TWSDIR=../lib/ibg-b952.1a/
+TWSCP=$TWSDIR/jts.jar:$TWSDIR/total.2013.jar
+IBCINI='./IBController.ini'
+JAVAOPTS='-Xmx768M -XX:MaxPermSize=256M'
+
+java -cp  $TWSCP:./IBController-3.2.0-ibg-b952.1a.jar $JAVAOPTS ibcontroller.IBGatewayController $IBCINI $TWSUSERID $TWSPASSWORD $TWSAPIPORT live
