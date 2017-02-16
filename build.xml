@@ -1,7 +1,9 @@
 <project name="IBController" default="dist" basedir=".">
     <property environment="env"/>
 
-    <property name="ver" value="3.2.0-ibg-b963"/>
+    <property name="ver" value="3.2.0"/>
+    <property name="ib.ver" value="ibg-b963" />
+
     <property name="src" location="src"/>
     <property name="resources" location="resources"/>
     <property name="tws.lib" location="lib" />
@@ -9,7 +11,7 @@
     <property name="dist"  location="dist"/>
 
     <path id="external.classpath">
-        <fileset dir="${tws.lib}" includes="**/*.jar"/>
+        <fileset dir="${lib}/${ib.ver}" includes="**/*.jar"/>
     </path>
 
     <target name="clean" description="clean up">
@@ -19,33 +21,34 @@
 
     <target name="compile" description="compile the source ">
         <mkdir dir="${target}/classes"/>
-        <javac srcdir="${src}" destdir="${target}/classes" source="7" target="7" includeantruntime="false">
+        <javac srcdir="${src}" debug="true" destdir="${target}/classes" 
+               source="7" target="7" includeantruntime="false">
             <classpath refid="external.classpath"/>
             <compilerarg value="-Xlint:all"/>
         </javac>
     </target>
 
     <target name="jar" depends="compile" description="generate the jar">
-        <jar jarfile="${resources}/IBController-${ver}.jar" basedir="${target}/classes">
+        <jar jarfile="${resources}/IBController-${ver}-${ib.ver}.jar" basedir="${target}/classes">
             <manifest>
                 <attribute name="Built-By" value="${user.name}"/>
                 <attribute name="Specification-Title" value="IBController"/>
-                <attribute name="Specification-Version" value="${ver}"/>
+                <attribute name="Specification-Version" value="${ver}-${ib.ver}"/>
                 <attribute name="Implementation-Title" value="IBController"/>
-                <attribute name="Implementation-Version" value="${ver} ${TODAY}"/> 
+                <attribute name="Implementation-Version" value="${ver}-${ib.ver} ${TODAY}"/> 
             </manifest>
         </jar>
     </target>
 
     <target name="dist" depends="jar" description="generate the distribution zip">
-        <echo file="${resources}/version" append="false" message="${ver}"/>
+        <echo file="${resources}/version" append="false" message="${ver}-${ib.ver}"/>
         <copy todir="${target}/IBController" preservelastmodified="true">
             <fileset file="LICENSE.txt"/>
             <fileset dir="${resources}">
-	        <exclude name="IBControllerService/**"/>
-	    </fileset>
-	</copy>
-        <zip destfile="${dist}/IBController-${ver}.zip" basedir="${target}/IBController" includes="**"/>
+    	        <exclude name="IBControllerService/**"/>
+    	    </fileset>
+	    </copy>
+        <zip destfile="${dist}/IBController-${ver}-${ib.ver}.zip" basedir="${target}/IBController" includes="**"/>
     </target>
 
 </project>
