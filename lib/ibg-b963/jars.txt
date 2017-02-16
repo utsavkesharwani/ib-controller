@@ -1,4 +1,5 @@
 hsqldb.jar
+httpcore-4.3.jar
 httpclient-4.3.jar
 jts4launch-963.jar
 locales.jar
