@@ -1,7 +1,7 @@
 <project name="IBController" default="dist" basedir=".">
     <property environment="env"/>
 
-    <property name="ver" value="3.2.0"/>
+    <property name="ver" value="3.3.0"/>
     <property name="ib.ver" value="ibg-b963" />
 
     <property name="src" location="src"/>
