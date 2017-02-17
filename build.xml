@@ -11,7 +11,7 @@
     <property name="dist"  location="dist"/>
 
     <path id="external.classpath">
-        <fileset dir="${lib}/${ib.ver}" includes="**/*.jar"/>
+        <fileset dir="${tws.lib}/${ib.ver}" includes="**/*.jar"/>
     </path>
 
     <target name="clean" description="clean up">
