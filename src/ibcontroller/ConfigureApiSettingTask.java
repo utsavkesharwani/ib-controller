@@ -18,6 +18,8 @@ class ConfigureApiSettingTask implements Runnable {
     @Override
     public void run() {
         try {
+
+
             // blocks the thread until the config dialog is available
             final JDialog configDialog = ConfigDialogManager.configDialogManager().getConfigDialog();
 
@@ -37,8 +39,8 @@ class ConfigureApiSettingTask implements Runnable {
         try {
             Utils.logToConsole("Performing Api setting configuration");
 
+            // older versions of TWS don't have the Settings node below the API node
             if (!Utils.selectConfigSection(configDialog, new String[] {"API","Settings"}))
-                // older versions of TWS don't have the Settings node below the API node
                 Utils.selectConfigSection(configDialog, new String[] {"API"});
 
             if (apiPort != 0) {
@@ -69,6 +71,7 @@ class ConfigureApiSettingTask implements Runnable {
                 }
             }
 
+            // Read-only API
             JCheckBox cb = SwingUtils.findCheckBox(configDialog, "Read-Only API");
             if (cb == null) throw new IBControllerException("could not find Read-Only API checkbox");
 
@@ -99,8 +102,9 @@ class ConfigureApiSettingTask implements Runnable {
 
             // End
 
+            //SwingUtils.clickButton(configDialog, "Apply");
             SwingUtils.clickButton(configDialog, "OK");
-            configDialog.setVisible(false);
+            //configDialog.setVisible(false);
 
         } catch (IBControllerException e) {
             Utils.logError("" + e.getMessage());

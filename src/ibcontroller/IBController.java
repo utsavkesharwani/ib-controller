@@ -38,7 +38,8 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import javax.imageio.IIOException;
 import javax.transaction.InvalidTransactionException;
-
+import sun.misc.SignalHandler;
+import sun.misc.Signal;
 
 /**
  * @author stevek
@@ -227,6 +228,8 @@ public class IBController {
         checkArguments(args);
 
         setupDefaultEnvironment(args, false);
+        //setupSignalHandlers();
+
         load(args);
     }
     
@@ -235,6 +238,44 @@ public class IBController {
         LoginManager.initialise(new DefaultLoginManager(args));
         MainWindowManager.initialise(new DefaultMainWindowManager(isGateway));
         TradingModeManager.initialise(new DefaultTradingModeManager(args));
+        
+      	Signal.handle(new Signal("HUP"), new SignalHandler() {
+	      	@Override
+	      	public void handle(Signal signal) {
+	        	try {
+	          		Utils.logToConsole("Recved HUP sig and turn 'Detail' logging level");
+	          		MyCachedThreadPool.getInstance().execute(new ConfigureLoggingLevelTask("Detail"));
+	        	} catch (Exception e) {
+	                Utils.logToConsole("Handle HUP sig failed: " + e);
+	        	}	
+	      	}
+	    });      
+    }
+
+    static void setupSignalHandlers() {
+    	Signal.handle(new Signal("HUP"), new SignalHandler() {
+	      	@Override
+	      	public void handle(Signal signal) {
+	        	try {
+	          		Utils.logToConsole("Recved HUP sig and turn 'Detail' logging level");
+	          		MyCachedThreadPool.getInstance().execute(new ConfigureLoggingLevelTask("Detail"));
+	        	} catch (Exception e) {
+	                Utils.logToConsole("Handle HUP sig failed: " + e);
+	        	}	
+	      	}
+	    });
+
+	    Signal.handle(new Signal("USR2"), new SignalHandler() {
+	      	@Override
+	      	public void handle(Signal signal) {
+	        	try {
+	          		Utils.logToConsole("Recved USR2 sig and turn 'Error' logging level");
+	          		MyCachedThreadPool.getInstance().execute(new ConfigureLoggingLevelTask("Error"));
+	        	} catch (Exception e) {
+	                Utils.logToConsole("Handle USR2 sig failed: " + e);
+	        	}	
+	      	}
+	    });
     }
 
     static void checkArguments(String[] args) {

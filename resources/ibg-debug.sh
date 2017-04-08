@@ -1,7 +1,9 @@
 #! /bin/bash
 
-TWSUSERID=ibzzy123
-TWSPASSWORD=ibzzy1234
+#TWSUSERID=jack0121
+TWSUSERID=zjhcxx322
+#TWSPASSWORD=jacktang009
+TWSPASSWORD=zjhc1234567
 TWSAPIPORT=4001
 IBCTRLPORT=7462
 
@@ -10,4 +12,4 @@ TWSCP=$TWSDIR/jts4launch-963.jar:$TWSDIR/locales.jar:$TWSDIR/log4j-api-2.5.jar:$
 IBCINI='./IBController.ini'
 JAVAOPTS='-Xmx768M -XX:MaxPermSize=256M'
 
-java -cp  $TWSCP:./IBController-3.3.0-ibg-b963.jar $JAVAOPTS ibcontroller.IBGatewayController $IBCINI $TWSUSERID $TWSPASSWORD $TWSAPIPORT paper
+~/Applications/IB\ Gateway\ 963/.install4j/jre.bundle/Contents/Home/jre/bin/java -cp  $TWSCP:./IBController-3.3.0-ibg-b963.jar $JAVAOPTS ibcontroller.IBGatewayController $IBCINI $TWSUSERID $TWSPASSWORD $TWSAPIPORT paper

@@ -45,6 +45,7 @@ public class DefaultConfigDialogManager extends ConfigDialogManager {
     @Override
     public void clearConfigDialog() {
         configDialog = null;
+        GetConfigDialogTask.getInstance().clearConfigDialog();
     }
     
     /**
@@ -83,7 +84,8 @@ public class DefaultConfigDialogManager extends ConfigDialogManager {
         
         if (configDialogFuture == null) {
             Utils.logToConsole("Creating config dialog future");
-            configDialogTask = new GetConfigDialogTask(MainWindowManager.mainWindowManager().isGateway());
+            configDialogTask = GetConfigDialogTask.getInstance();
+            configDialogTask.setIsGateway(MainWindowManager.mainWindowManager().isGateway());
             ExecutorService exec = Executors.newSingleThreadExecutor();
             configDialogFuture = exec.submit((Callable<JDialog>)configDialogTask);
             exec.shutdown();

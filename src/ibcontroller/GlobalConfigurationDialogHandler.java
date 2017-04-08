@@ -39,6 +39,7 @@ class GlobalConfigurationDialogHandler implements WindowHandler {
     public void handleWindow(final Window window, int eventId) {
         switch (eventId) {
             case WindowEvent.WINDOW_OPENED:
+                Utils.logToConsole("ConfigDialog: " + SwingUtils.getWindowStructure(window));
                 ConfigDialogManager.configDialogManager().setConfigDialog((JDialog) window);
                 break;
             case WindowEvent.WINDOW_CLOSED:

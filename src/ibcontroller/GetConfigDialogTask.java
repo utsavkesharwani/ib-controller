@@ -26,17 +26,26 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 
 class GetConfigDialogTask implements Callable<JDialog>{
+    private static final GetConfigDialogTask instance = new GetConfigDialogTask();
+
     private volatile JDialog mConfigDialog;
     private volatile boolean mGatewayInitialised;
     private final Lock lock = new ReentrantLock();
     private final Condition gotConfigDialog = lock.newCondition();
     private final Condition gatewayInitialised = lock.newCondition();
-    private final boolean isGateway;
-    
-    GetConfigDialogTask(boolean isGateway) {
+    private boolean isGateway;
+
+    private GetConfigDialogTask() {
+    }
+
+    public void setIsGateway(boolean isGateway) {
         this.isGateway = isGateway;
     }
     
+    public static GetConfigDialogTask getInstance() {
+        return instance;
+    }
+
     @Override
     public JDialog call() throws IBControllerException, InterruptedException {
         final JFrame mainForm = MainWindowManager.mainWindowManager().getMainWindow();
@@ -59,6 +68,7 @@ class GetConfigDialogTask implements Callable<JDialog>{
             lock.lock();
             try {
                 while (!mGatewayInitialised) {
+                    Utils.logToConsole("Awating gateway initalizing...");
                     gatewayInitialised.await();
                 }
             } finally {
@@ -67,7 +77,11 @@ class GetConfigDialogTask implements Callable<JDialog>{
         }
         
         if (isGateway) {
-            if (!Utils.invokeMenuItem(mainForm, new String[] {"Configure", "Settings"})) throw new IBControllerException("'Configure > Settings' menu item");
+            if (Utils.invokeMenuItem(mainForm, new String[] {"Configure", "Settings"})) {
+                Utils.logToConsole("Open menu: Configure > Settings");
+            } else {
+                throw new IBControllerException("'Configure > Settings' menu item");
+            }
         } else if (Utils.invokeMenuItem(mainForm, new String[] {"Edit", "Global Configuration..."})) /* TWS's Classic layout */ {
         } else if (Utils.invokeMenuItem(mainForm, new String[] {"File", "Global Configuration..."})) /* TWS's Mosaic layout */ {
         } else {
@@ -77,14 +91,20 @@ class GetConfigDialogTask implements Callable<JDialog>{
         lock.lock();
         try {
             while (mConfigDialog == null) {
+                Utils.logToConsole("Awaiting config dialog...");
                 gotConfigDialog.await();
             }
         } finally {
             lock.unlock();
         }
+
         return mConfigDialog;
     }  
 
+    void clearConfigDialog() {
+        this.mConfigDialog = null;
+    }
+    
     void setConfigDialog(JDialog configDialog) {
         lock.lock();
         try {
